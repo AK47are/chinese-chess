@@ -1,0 +1,38 @@
+# Qt Creator and build system files
+*.pro.user
+*.pro.user.*
+*.qmake.stash
+*.qmake.cache
+*.moc
+*.o
+*.obj
+*.gch
+*.pch
+*.s
+*.i
+*.ii
+debug/
+release/
+build*/
+
+# CMake files (if using CMake)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Platform specific files
+*.pdb
+*.ilk
+*.dSYM/
+*.qbs
+
+# IDE specific files
+.idea/
+.vscode/
+
+# Other common files
+*.log
+*.tmp
+*.bak
+
