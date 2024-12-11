@@ -1,9 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <vector>
-#include <QMainWindow>
+#include <qgraphicsscene.h>
+
 #include <QGraphicsRectItem>
+#include <QMainWindow>
+
+#include "SolveChess.h"
 using namespace std;
 
 QT_BEGIN_NAMESPACE
@@ -12,23 +15,31 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
-class MainWindow : public QMainWindow
-{
-    Q_OBJECT
+class MainWindow : public QMainWindow {
+  Q_OBJECT
 
-public:
-    MainWindow(QWidget *parent = nullptr);
+ public:
+  MainWindow(QWidget *parent = nullptr);
+  ~MainWindow();
+  void drawNextStep();
 
-    void trigger();
-    void display(vector<vector<bool>>&, vector<vector<QGraphicsRectItem*>>&);
-    int check(int, pair<int, int>&, pair<int, int>&);
-    void cover(vector<vector<bool>>&, vector<vector<QGraphicsRectItem*>>&, int, int, pair<int, int>, pair<int, int>);
-    void block(vector<vector<bool>>&, vector<vector<QGraphicsRectItem*>>&, int, int, pair<int, int>, pair<int, int>);
-    void solve(vector<vector<bool>>&, vector<vector<QGraphicsRectItem*>>&, int, pair<int, int>, pair<int, int>);
+ private slots:
+  void trigger();
 
-    ~MainWindow();
+  void on_showStop_clicked();
 
-private:
-    Ui::MainWindow *ui;
+  void on_showContinue_clicked();
+
+  void on_showBack_clicked();
+
+  void on_showForward_clicked();
+
+ private:
+  Ui::MainWindow *ui;
+  int draw_count = 0;
+  SolveChess *chess;
+  QGraphicsScene *scene;
+  vector<vector<QGraphicsRectItem *>> cell;
+  bool is_stop = false;
 };
-#endif // MAINWINDOW_H
+#endif  // MAINWINDOW_H
