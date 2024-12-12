@@ -4,11 +4,15 @@
 # 课题
 
 ## 棋盘覆盖
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_棋盘覆盖_问题描述.png">
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_棋盘覆盖_问题分析.png">
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_棋盘覆盖_问题要求.png">
+<div style="text-align: center;">
+    <img src="docs/image/课程设计_棋盘覆盖_问题描述.png">
+    <img src="docs/image/课程设计_棋盘覆盖_问题分析.png">
+    <img src="docs/image/课程设计_棋盘覆盖_问题要求.png">
+</div>
 
 ## 中国象棋
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_中国象棋_问题描述1.png">
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_中国象棋_问题描述2.png">
-<img style="display: block; margin: 0 auto;" src="docs/image/课程设计_中国象棋_问题要求.png">
+<div style="text-align: center;">
+  <img src="docs/image/课程设计_中国象棋_问题描述1.png">
+  <img src="docs/image/课程设计_中国象棋_问题描述2.png">
+  <img src="docs/image/课程设计_中国象棋_问题要求.png">
+</div>
