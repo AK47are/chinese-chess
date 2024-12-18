@@ -5,6 +5,7 @@
 #include <QGraphicsView>
 #include <QLabel>
 #include <QPushButton>
+#include <QTcpServer>
 
 class AbstractChessPiece;
 
@@ -48,9 +49,7 @@ private:
 
     // 图形坐标与逻辑坐标的映射
     QPointF points[ROWS][COLS];
-
-    // NOTE: 不初始化为 nullptr ，在 initPieces() 添加 NoPiece 对象时判断会出错。
-    AbstractChessPiece *pieces[ROWS][COLS] = {nullptr};
+    AbstractChessPiece *pieces[ROWS][COLS];
 
     // 记录选择操作选择的 Item 对象。
     AbstractChessPiece *sel_piece = nullptr;
@@ -62,9 +61,9 @@ private:
 };
 
 // 主要补充与窗口中的其他组件的交互，需要更多外部参数。
-class ChessBoard : public SimpleChessBoard {
+class IntActChessBoard : public SimpleChessBoard {
 public:
-    ChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
+    IntActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
     virtual void handlePieceNotice(AbstractChessPiece *piece) override;
     virtual void initPieces() override;
     void showText();
@@ -73,15 +72,23 @@ private:
       QLabel *text_ui;
 };
 
-// 主要补充有关网络类的使用。
-class NetChessBoard : public ChessBoard {
+// 主要补充有关网络的使用。
+class NetChessBoard : public SimpleChessBoard {
 public:
-    NetChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
-    // virtual void handlePieceNotice(AbstractChessPiece *piece) override;
-    // virtual void initPieces() override;
+    NetChessBoard(QGraphicsView *board, Camp cp, QHostAddress ip, quint16 port);
+    virtual void handlePieceNotice(AbstractChessPiece *piece) override;
+    QTcpSocket *getSocket();
+
+private slots:
+    void onNewConnection();
+    void onClientReadyRead();
+    void onDisconnected();
 
 private:
-
+    const Camp camp;
+    // 默认黑棋为服务器端。
+    QTcpServer *black = nullptr;
+    QTcpSocket *red = nullptr;
 };
 
 #endif // CHESSBOARD_H
