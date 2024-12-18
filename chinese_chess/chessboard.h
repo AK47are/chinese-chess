@@ -66,18 +66,21 @@ public:
     IntActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
     virtual void handlePieceNotice(AbstractChessPiece *piece) override;
     virtual void initPieces() override;
-    void showText();
+    void updateText();
+    void updateWinner();
 
 private:
       QLabel *text_ui;
 };
 
-// 主要补充有关网络的使用。
-class NetChessBoard : public SimpleChessBoard {
+// 主要补充有关网络的使用，有些乱。
+// 菱形继承和 Qt 的 connect(...) 冲突。
+class NetActChessBoard : public IntActChessBoard {
 public:
-    NetChessBoard(QGraphicsView *board, Camp cp, QHostAddress ip, quint16 port);
+    NetActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset,
+                     Camp cp, QHostAddress ip, quint16 port);
     virtual void handlePieceNotice(AbstractChessPiece *piece) override;
-    QTcpSocket *getSocket();
+    virtual void initPieces() override;
 
 private slots:
     void onNewConnection();

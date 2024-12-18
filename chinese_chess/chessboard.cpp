@@ -199,96 +199,121 @@ IntActChessBoard::IntActChessBoard(QGraphicsView *board, QLabel *show_text,
        QPushButton *reset) : SimpleChessBoard(board),
         text_ui(show_text) {
     connect(reset, &QPushButton::clicked, this, &IntActChessBoard::initPieces);
-    showText();
+    updateText();
+    updateWinner();
 }
 
 void IntActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     SimpleChessBoard::handlePieceNotice(piece);
-    showText();
+    updateText();
 }
 
 void IntActChessBoard::initPieces() {
     SimpleChessBoard::initPieces();
-    showText();
+    updateText();
 }
 
-void IntActChessBoard::showText() {
+void IntActChessBoard::updateText() {
     text_ui->setFont(QFont("fangsong", 20, Qt::yellow));
     text_ui->setAlignment(Qt::AlignCenter);
-    if (getWinner() == Winner::none) {
         if (getCurrCamp() == Camp::black)
             text_ui->setText("轮到黑棋出棋");
         else if (getCurrCamp() == Camp::red)
             text_ui->setText("轮到红棋出棋");
         else
             text_ui->setText("错误");
-    } else {
-        if (getCurrCamp() == Camp::black)
-            text_ui->setText("黑棋胜利");
-        else if (getCurrCamp() == Camp::red)
-            text_ui->setText("红棋胜利");
-        else
-            text_ui->setText("错误");
+}
+
+void IntActChessBoard::updateWinner() {
+    if (getWinner() == Winner::black) {
+        QMessageBox::information(nullptr, "胜利", "黑棋胜利");
+    } else if (getWinner() == Winner::red){
+        QMessageBox::information(nullptr, "胜利", "红棋胜利");
     }
 }
 
-NetChessBoard::NetChessBoard(QGraphicsView *board, Camp cp, QHostAddress ip,
-                    quint16 port) : SimpleChessBoard(board), camp(cp) {
+NetActChessBoard::NetActChessBoard(QGraphicsView *board, QLabel *show_text,
+    QPushButton *reset, Camp cp, QHostAddress ip, quint16 port) :
+    IntActChessBoard(board, show_text, reset), camp(cp) {
     if (camp == Camp::black) {
         black = new QTcpServer(this);
         black->listen(ip, port);
         connect(black, &QTcpServer::newConnection, this,
-                &NetChessBoard::onNewConnection);
+                &NetActChessBoard::onNewConnection);
         QMessageBox::information(nullptr, "提示", "服务器创建成功");
     } else if (camp == Camp::red) {
         red = new QTcpSocket();
         red->connectToHost(ip, port);
-        connect(red, &QTcpSocket::readyRead, this, &NetChessBoard::onClientReadyRead);
+        connect(red, &QTcpSocket::readyRead, this, &NetActChessBoard::onClientReadyRead);
     } else {
         QMessageBox::information(nullptr, "警告", "阵营不存在");
     }
 }
 
-void NetChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
+void NetActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     if (red == nullptr) {
         QMessageBox::information(nullptr, "警告", "当前玩家人数不足");
-        return;
-    }
-    if (camp == getCurrCamp()) {
-        auto prev_sel = getSelPie();
-        SimpleChessBoard::handlePieceNotice(piece);
-        if (camp != getCurrCamp()) { // 代表有移动。
-            QByteArray data;
-            QDataStream out(&data, QIODevice::WriteOnly);
-            out << prev_sel->getCoord() << piece->getCoord();  // 将 QPoint 对象写入到数据流中
-            red->write(data);
+    } else {
+        if (camp == getCurrCamp()) {
+            QPoint prev_sel_coord;
+            auto prev_sel = getSelPie();
+            if (getSelPie() != nullptr) {
+                prev_sel_coord = getSelPie()->getCoord();
+            }
+            SimpleChessBoard::handlePieceNotice(piece);
+            if (camp != getCurrCamp()) { // 代表有移动。
+                QByteArray data;
+                QString command = "movePiece";
+                QDataStream out(&data, QIODevice::WriteOnly);
+                out << command << prev_sel_coord << prev_sel->getCoord();
+                red->write(data);
+            }
         }
     }
+    updateText();
+    updateWinner();
+}
+
+void NetActChessBoard::initPieces() {
+    IntActChessBoard::initPieces();
+    QString command = "initPieces";
+    QByteArray data;
+    QDataStream out(&data, QIODevice::WriteOnly);
+    out << command;
+    red->write(data);
 }
 
 // 只能给 black 绑定这个槽函数。
-void NetChessBoard::onNewConnection() {
+void NetActChessBoard::onNewConnection() {
     if (red == nullptr) {
         red = black->nextPendingConnection();
         QMessageBox::information(nullptr, "提示", "有玩家进入房间");
-        connect(red, &QTcpSocket::readyRead, this, &NetChessBoard::onClientReadyRead);
-        connect(red, &QTcpSocket::disconnected, this, &NetChessBoard::onDisconnected);
+        connect(red, &QTcpSocket::readyRead, this, &NetActChessBoard::onClientReadyRead);
+        connect(red, &QTcpSocket::disconnected, this, &NetActChessBoard::onDisconnected);
     } else {
         QMessageBox::information(nullptr, "警告", "已经有玩家进入房间");
     }
 }
 
-void NetChessBoard::onClientReadyRead() {
+void NetActChessBoard::onClientReadyRead() {
     QByteArray data = red->readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
-    QPoint start, end;
-    in >> end >> start;
-    // qDebug() << start << " " << end;
-    setSelPie(getPiece(start));
-    movePiece(getPiece(end));
+    QString command;
+    in >> command;
+    if (command == "initPieces") {
+        IntActChessBoard::initPieces();
+    } else if (command == "movePiece") {
+        QPoint start, end;
+        in >> start >> end;
+        setSelPie(getPiece(start));
+        movePiece(getPiece(end));
+    }
+    updateText();
+    updateWinner();
 }
 
-void NetChessBoard::onDisconnected() {
+void NetActChessBoard::onDisconnected() {
     red = nullptr;
     QMessageBox::information(nullptr, "警告", "有玩家断开连接");
+    IntActChessBoard::initPieces();
 }

@@ -40,7 +40,9 @@ void Widget::initChessBoard() {
         msg_box.addButton(QMessageBox::Close);
         msg_box.exec();
         if (msg_box.clickedButton() == create) {
-            new NetChessBoard(ui->chessboard, Camp::black, QHostAddress::Any, 12345);
+            // 注意有些网络端口可能已经被占用，导致找不到。vpn 使用代理服务器也会影响。
+            new NetActChessBoard(ui->chessboard, ui->chess_text, ui->reset_chess,
+                                 Camp::black, QHostAddress::Any, 11111);
         } else if (msg_box.clickedButton() == join){
             bool is_ip, is_port, is_convert;
             QHostAddress ip = QHostAddress(QInputDialog::getText(this, tr("输入框"),
@@ -48,7 +50,8 @@ void Widget::initChessBoard() {
             quint16 port = (QInputDialog::getText(this, tr("输入框"),
                 tr("请输入对应 port"), QLineEdit::Normal, "", &is_port)).toUInt(&is_convert);
             if (is_ip && !ip.isNull() && is_port && is_convert && port <= 65535) {
-                new NetChessBoard(ui->chessboard, Camp::red, ip, port);
+                new NetActChessBoard(ui->chessboard, ui->chess_text, ui->reset_chess,
+                                  Camp::red, ip, port);
             } else {
                 QMessageBox::warning(nullptr, "警告", "连接失败，非法输入！");
                 exit(0);

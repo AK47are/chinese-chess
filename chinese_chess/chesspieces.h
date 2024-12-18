@@ -104,4 +104,5 @@ public:
     virtual bool isAbleMove(QPoint pos) override;
 };
 
+
 #endif // CHESSPIECES_H

@@ -197,22 +197,34 @@ bool Chariot::isAbleMove(QPoint pos) {
 
 bool Cannon::isAbleMove(QPoint pos) {
     if (!AbstractChessPiece::isAbleMove(pos)) return false;
-    // 移动判定：终点位置必须有敌方棋子，在同一横线或竖线上，起点和终点间有且仅有一个棋子。
-    if (!(getBoard().getPiece(pos)->getCamp() != Camp::none))
-        return false;
     if (!(pos.x() == getCoord().x() || pos.y() == getCoord().y()))
         return false;
-    int count = 0;
-    if (pos.x() == getCoord().x()) {
-        for (int i = fmax(pos.y(), getCoord().y()) - 1; fmin(pos.y(), getCoord().y()) < i; --i)
-            if (!(getBoard().getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
-                ++count;
+    // 移动判定：终点位置无棋子
+    // 移动判定：终点位置必须有敌方棋子，在同一横线或竖线上，起点和终点间有且仅有一个棋子。
+    if (getBoard().getPiece(pos)->getCamp() == Camp::none) {
+        if (pos.x() == getCoord().x()) {
+            for (int i = fmax(pos.y(), getCoord().y()) - 1; fmin(pos.y(), getCoord().y()) < i; --i)
+                if (!(getBoard().getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
+                    return false;
+        } else {
+            for (int i = fmax(pos.x(), getCoord().x()) - 1; fmin(pos.x(), getCoord().x()) < i; --i)
+                if (!(getBoard().getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
+                    return false;
+        }
     } else {
-        for (int i = fmax(pos.x(), getCoord().x()) - 1; fmin(pos.x(), getCoord().x()) < i; --i)
-            if (!(getBoard().getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
-                ++count;
+        // 击杀判定
+        int count = 0;
+        if (pos.x() == getCoord().x()) {
+            for (int i = fmax(pos.y(), getCoord().y()) - 1; fmin(pos.y(), getCoord().y()) < i; --i)
+                if (!(getBoard().getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
+                    ++count;
+        } else {
+            for (int i = fmax(pos.x(), getCoord().x()) - 1; fmin(pos.x(), getCoord().x()) < i; --i)
+                if (!(getBoard().getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
+                    ++count;
+        }
+        if (count != 1) return false;
     }
-    if (count != 1) return false;
     return true;
 }
 
