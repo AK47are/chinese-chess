@@ -25,15 +25,42 @@
 // 必须重载
 // isAbleMove(QFont pos) 判断是否允许到 pos 。
 
-class Super : public AbstractChessPiece {
+// 炮灰：可瞬移到敌方任意单位前。无法进行攻击。
+class Assassin : public AbstractChessPiece {
 public:
     using AbstractChessPiece::AbstractChessPiece;
-    virtual std::array<QString, 3> getName() override { return {"机甲", "马", "无"}; };
-    virtual bool isAbleMove(QPoint pos) override { return true; };
+    virtual std::array<QString, 3> getName() override { return {"炮灰", "炮灰", "无"}; };
+    virtual bool isAbleMove(QPoint pos) override;;
 };
 
 // 这里可以添加自己的棋子
-void ChessBoard::addOtherPiece() {
-    // new Super(this, Camp::black, QPoint{5, 5});
-    // 格式类似为：new xxx(this, camp_id, coord),
+void SimpleChessBoard::addOtherPiece() {
+    // new Assassin(*this, Camp::red, QPoint{4, 4});
+    // new Assassin(*this, Camp::black, QPoint{5, 4});
+    // 格式类似为：new xxx(*this, camp_id, coord),
+}
+
+
+
+bool Assassin::isAbleMove(QPoint pos) {
+    if (!AbstractChessPiece::isAbleMove(pos))
+        return false;
+    if (!(getBoard().getPiece(pos)->getCamp() == Camp::none))
+        return false;
+    QPoint delta[4] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+    for (int i = 0; i < 4; ++i) {
+        // 越界判定
+        if (!((pos + delta[i]).x() < getBoard().ROWS &&
+              (pos + delta[i]).x() >= 0 && (pos + delta[i]).y() >= 0 &&
+              (pos + delta[i]).y() < getBoard().COLS))
+            continue;
+        if (getCamp() == Camp::black) {
+            if (getBoard().getPiece(pos + delta[i])->getCamp() == Camp::red)
+                return true;
+        } else {
+            if (getBoard().getPiece(pos + delta[i])->getCamp() == Camp::black)
+                return true;
+        }
+    }
+    return false;
 }

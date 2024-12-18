@@ -7,7 +7,7 @@ Widget::Widget(QWidget *parent)
     , ui(new Ui::Widget) {
     ui->setupUi(this);
     this->setWindowTitle("中国象棋");
-    new ChessBoard(ui->chessboard);
+    new ChessBoard(ui->chessboard, ui->chess_text, ui->reset_chess);
 }
 
 Widget::~Widget() {

@@ -23,6 +23,32 @@
     </rect>
    </property>
   </widget>
+  <widget class="QLabel" name="chess_text">
+   <property name="geometry">
+    <rect>
+     <x>560</x>
+     <y>20</y>
+     <width>271</width>
+     <height>61</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; color:#ffffff;&quot;&gt;&lt;br/&gt;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="reset_chess">
+   <property name="geometry">
+    <rect>
+     <x>570</x>
+     <y>140</y>
+     <width>61</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>重置</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

@@ -1,19 +1,19 @@
 #include "chesspieces.h"
 #include "chessboard.h"
 
-AbstractChessPiece::AbstractChessPiece(ChessBoard *chess, Camp camp_id,
+AbstractChessPiece::AbstractChessPiece(SimpleChessBoard &chess, Camp camp_id,
     QPoint coord) : chess_(chess), camp_(camp_id) {
 
-    chess_->addItem(this);
+    chess_.addItem(this);
     this->setCoord(coord);
 }
 
 void AbstractChessPiece::paint(QPainter *painter,
         const QStyleOptionGraphicsItem *option, QWidget *widget) {
 
-    double size = fmin(chess_->WIDTH, chess_->HEIGHT) - 5;
+    double size = fmin(chess_.WIDTH, chess_.HEIGHT) - 5;
     QPen pen;
-    if (chess_->sel_piece == this) {
+    if (chess_.getSelPie() == this) {
         pen.setColor(Qt::blue);
         pen.setWidth(2);
     } else {
@@ -28,31 +28,39 @@ void AbstractChessPiece::paint(QPainter *painter,
 }
 
 void AbstractChessPiece::mousePressEvent(QGraphicsSceneMouseEvent *event) {
-    chess_->judgeSelectOrMove(this);
+    this->notifyChess();
     QGraphicsItem::mousePressEvent(event); // 必须添加
 }
 
 void AbstractChessPiece::drawText(QPainter *painter) {
     auto text = getName();
-    QFont font;
-    font.setFamily("FangSong");
-    font.setPixelSize(getBoard()->WIDTH / 2);
-    font.setBold(true);
-    painter->setFont(font);
+    QString disp_text;
     if (getCamp()== Camp::black) {
         painter->setPen(QPen(Qt::black));
-        painter->drawText(QRectF(-50, -50, 100, 100), Qt::AlignCenter, text[0]);
+        disp_text = text[0];
     } else if (getCamp() == Camp::red) {
         painter->setPen(QPen(Qt::red));
-        painter->drawText(QRectF(-50, -50, 100, 100), Qt::AlignCenter, text[1]);
+        disp_text = text[1];
     } else {
         painter->setPen(QPen(Qt::green));
-        painter->drawText(QRectF(-50, -50, 100, 100), Qt::AlignCenter, text[2]);
+        disp_text = text[2];
     }
+
+    QFont font;
+    font.setFamily("FangSong");
+    font.setPixelSize(getBoard().WIDTH / (1 + disp_text.size()));
+    font.setBold(true);
+    painter->setFont(font);
+    painter->drawText(QRectF(-100, -100, 200, 200), Qt::AlignCenter,
+                      disp_text);
 }
 
 std::array<QString, 3> AbstractChessPiece::getName() {
     return {"无", "无", "无"};
+}
+
+void AbstractChessPiece::notifyChess() {
+    chess_.handlePieceNotice(this);
 }
 
 Camp AbstractChessPiece::getCamp() const {
@@ -63,7 +71,7 @@ QPoint AbstractChessPiece::getCoord() const {
     return coord_;
 }
 
-ChessBoard *AbstractChessPiece::getBoard() {
+SimpleChessBoard &AbstractChessPiece::getBoard() const {
     return chess_;
 }
 
@@ -71,23 +79,22 @@ void AbstractChessPiece::setCoord(QPoint coord) {
     coord_ = coord;
     // setPos(...) 设置该对象的起点在画布上的坐标，后面 paint(...) 是以起点为基准的相对坐标。
     // 每次设置后会自动调用 paint(...);
-    this->setPos(chess_->getPoint(coord_));
-    chess_->getPiece(coord_) = this;
+    this->setPos(chess_.getPoint(coord_));
+    chess_.setPiece(coord_, this);
 }
 
 // 碰撞箱
 QRectF AbstractChessPiece::boundingRect() const {
 
-    double size = fmin(chess_->WIDTH, chess_->HEIGHT) - 5;
+    double size = fmin(chess_.WIDTH, chess_.HEIGHT) - 5;
     return {-size / 2, -size / 2, size, size};
 }
 
 bool AbstractChessPiece::isAbleMove(QPoint pos) {
-    // 同阵营判定 可杀判定
-    if (chess_->getPiece(pos)->getCamp() == camp_)
+    // 同阵营判定
+    if (!(chess_.getPiece(pos)->getCamp() != camp_))
         return false;
-    else
-        return true;
+    return true;
 }
 
 
@@ -98,7 +105,7 @@ bool General::isAbleMove(QPoint pos) {
         if (!(pos.x() >= 0 && pos.x() <= 2 && pos.y() >= 3 && pos.y() <= 5))
             return false;
     } else if (getCamp() == Camp::black) {
-        if (!((pos.x() >= getBoard()->ROWS - 3 && pos.x() <= getBoard()->ROWS - 1 &&
+        if (!((pos.x() >= getBoard().ROWS - 3 && pos.x() <= getBoard().ROWS - 1 &&
                pos.y() >= 3 && pos.y() <= 5)))
             return false;
     }
@@ -106,7 +113,16 @@ bool General::isAbleMove(QPoint pos) {
     if (!((pos.x() == getCoord().x() && abs(pos.y() - getCoord().y()) == 1) ||
          (pos.y() == getCoord().y() && abs(pos.x() - getCoord().x()) == 1)))
         return false;
-    // TODO: 特殊判定：王不见王
+    // 特殊判定：王不见王
+    if (rival_general_->getCoord().y() == pos.y()) {
+        bool is_meet = false;
+        for (int i = fmax(pos.x(), rival_general_->getCoord().x()) - 1;
+             fmin(pos.x(), rival_general_->getCoord().x()) < i; --i) {
+            if (getBoard().getPiece(QPoint(i, pos.y()))->getCamp() != Camp::none)
+                is_meet = true;
+        }
+        return is_meet;
+    }
     return true;
 }
 
@@ -117,7 +133,7 @@ bool Guard::isAbleMove(QPoint pos) {
         if (!(pos.x() >= 0 && pos.x() <= 2 && pos.y() >= 3 && pos.y() <= 5))
             return false;
     } else if (getCamp() == Camp::black) {
-        if (!((pos.x() >= getBoard()->ROWS - 3 && pos.x() <= getBoard()->ROWS - 1 &&
+        if (!((pos.x() >= getBoard().ROWS - 3 && pos.x() <= getBoard().ROWS - 1 &&
                pos.y() >= 3 && pos.y() <= 5)))
             return false;
     }
@@ -131,16 +147,16 @@ bool Elephant::isAbleMove(QPoint pos) {
     if (!AbstractChessPiece::isAbleMove(pos)) return false;
     // 区域判定
     if (getCamp() == Camp::red) {
-        if (!(pos.x() >= 0 && pos.x() <= getBoard()->ROWS / 2 - 1))
+        if (!(pos.x() >= 0 && pos.x() <= getBoard().ROWS / 2 - 1))
             return false;
     } else if (getCamp() == Camp::black) {
-        if (!(pos.x() >= getBoard()->ROWS / 2 && pos.x() <= getBoard()->ROWS - 1))
+        if (!(pos.x() >= getBoard().ROWS / 2 && pos.x() <= getBoard().ROWS - 1))
             return false;
     }
     // 移动判定
     if (!(abs(pos.x() - getCoord().x()) == 2 && abs(pos.y() - getCoord().y()) == 2))
         return false;
-    if (!(getBoard()->getPiece((pos + getCoord()) / 2)->getCamp() == Camp::none))
+    if (!(getBoard().getPiece((pos + getCoord()) / 2)->getCamp() == Camp::none))
         return false;
     return true;
 }
@@ -157,7 +173,7 @@ bool Horse::isAbleMove(QPoint pos) {
     } else { // 判定为左右移动。
         di = (pos.y() < getCoord().y()) ? QPoint(0, -1) : QPoint(0, 1);
     }
-    if (!(getBoard()->getPiece(getCoord() + di)->getCamp() == Camp::none))
+    if (!(getBoard().getPiece(getCoord() + di)->getCamp() == Camp::none))
         return false;
     return true;
 }
@@ -169,11 +185,11 @@ bool Chariot::isAbleMove(QPoint pos) {
         return false;
     if (pos.x() == getCoord().x()) {
         for (int i = fmax(pos.y(), getCoord().y()) - 1; fmin(pos.y(), getCoord().y()) < i; --i)
-            if (!(getBoard()->getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
+            if (!(getBoard().getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
                 return false;
     } else {
         for (int i = fmax(pos.x(), getCoord().x()) - 1; fmin(pos.x(), getCoord().x()) < i; --i)
-            if (!(getBoard()->getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
+            if (!(getBoard().getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
                 return false;
     }
     return true;
@@ -182,18 +198,18 @@ bool Chariot::isAbleMove(QPoint pos) {
 bool Cannon::isAbleMove(QPoint pos) {
     if (!AbstractChessPiece::isAbleMove(pos)) return false;
     // 移动判定：终点位置必须有敌方棋子，在同一横线或竖线上，起点和终点间有且仅有一个棋子。
-    if (!(getBoard()->getPiece(pos)->getCamp() != Camp::none))
+    if (!(getBoard().getPiece(pos)->getCamp() != Camp::none))
         return false;
     if (!(pos.x() == getCoord().x() || pos.y() == getCoord().y()))
         return false;
     int count = 0;
     if (pos.x() == getCoord().x()) {
         for (int i = fmax(pos.y(), getCoord().y()) - 1; fmin(pos.y(), getCoord().y()) < i; --i)
-            if (!(getBoard()->getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
+            if (!(getBoard().getPiece(QPoint(pos.x(), i))->getCamp() == Camp::none))
                 ++count;
     } else {
         for (int i = fmax(pos.x(), getCoord().x()) - 1; fmin(pos.x(), getCoord().x()) < i; --i)
-            if (!(getBoard()->getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
+            if (!(getBoard().getPiece(QPoint(i, pos.y()))->getCamp() == Camp::none))
                 ++count;
     }
     if (count != 1) return false;

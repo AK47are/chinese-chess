@@ -5,7 +5,7 @@
 #include <QPen>
 #include <QFont>
 
-ChessBoard::ChessBoard(QGraphicsView *board) : WIDTH(board->width() / COLS),
+SimpleChessBoard::SimpleChessBoard(QGraphicsView *board) : WIDTH(board->width() / COLS),
     HEIGHT(board->height() / ROWS) {
 
     // 图像位置与逻辑位置映射。注意 x, y 轴与 Qt 的 x, y 轴相反
@@ -14,13 +14,13 @@ ChessBoard::ChessBoard(QGraphicsView *board) : WIDTH(board->width() / COLS),
             points[i][j] = QPointF((j + 1) * WIDTH, (i + 1) * HEIGHT);
         }
     }
-
-    drawBoard(board);
+    setView(board);
+    drawBoard();
     initPieces();
 }
 
-void ChessBoard::judgeSelectOrMove(AbstractChessPiece *piece) {
-    if (piece == nullptr) return;
+void SimpleChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
+    if (piece == nullptr || winner != Winner::none) return;
     if (sel_piece != nullptr && sel_piece != piece) {
         movePiece(piece);
     } else {
@@ -28,61 +28,84 @@ void ChessBoard::judgeSelectOrMove(AbstractChessPiece *piece) {
     }
 }
 
-void ChessBoard::selectPiece(AbstractChessPiece *piece) {
+void SimpleChessBoard::selectPiece(AbstractChessPiece *piece) {
      // 选择逻辑
     if (piece == nullptr || piece->getCamp() == Camp::none) return;
-    if (sel_piece == piece) {
-        sel_piece = nullptr;
-        piece->update();
-    } else {
-        sel_piece = piece;
-        for (int i = 0; i < ROWS; ++i) {
-            for (int j = 0; j < COLS; ++j) {
-                pieces[i][j]->update();
-            }
-        }
-    }
+    if (sel_piece == piece)
+        setSelPie(nullptr);
+    else
+        setSelPie(piece);
 }
 
-void ChessBoard::movePiece(AbstractChessPiece *target) {
+void SimpleChessBoard::movePiece(AbstractChessPiece *target) {
     // 移动逻辑
     if (sel_piece == nullptr || target == nullptr) return;
-    if (sel_piece->isAbleMove(target->getCoord())) {
+    if (sel_piece->isAbleMove(target->getCoord()) &&
+            sel_piece->getCamp() == curr_camp) {
+        curr_camp = (curr_camp == Camp::black) ? Camp::red : Camp::black;
         QPoint tmp1 = sel_piece->getCoord();
         QPoint tmp2 = target->getCoord();
         sel_piece->setCoord(tmp2);
         target->setCoord(tmp1);
         killPiece(target);
-    } else {
-        auto tmp = sel_piece;
-        sel_piece = nullptr;
-        tmp->update();
     }
+    setSelPie(nullptr);
 }
 
-void ChessBoard::killPiece(AbstractChessPiece *target) {
+void SimpleChessBoard::killPiece(AbstractChessPiece *target) {
     if (target->getCamp() == Camp::none) return;
+    // HACK: 不优雅，不安全
+    if (target->getName()[0] == "将") {
+        winner = (target->getCamp() == Camp::black) ? Winner::red : Winner::black;
+        // qDebug() << "出现赢家";
+    }
     QPoint coord = target->getCoord();
     this->removeItem(target);
-    delete target; // HACK: 莫名出现 QGraphicsItem::ungrabMouse: not a mouse grabber 警告。
-    new NoPiece(this, coord);
+    // FIX: 莫名出现 QGraphicsItem::ungrabMouse: not a mouse grabber 警告。
+    delete target;
+    new NoPiece(*this, coord);
 }
 
-QPointF ChessBoard::getPoint(QPoint coord) {
+QPointF SimpleChessBoard::getPoint(QPoint coord) const {
     return points[coord.x()][coord.y()];
 }
 
-AbstractChessPiece *&ChessBoard::getPiece(QPoint coord) {
+AbstractChessPiece *SimpleChessBoard::getSelPie() const {
+    return sel_piece;
+}
+
+void SimpleChessBoard::setSelPie(AbstractChessPiece *piece) {
+    auto tmp = sel_piece;
+    sel_piece = piece;
+    if (tmp) tmp->update();
+    if (sel_piece) sel_piece->update();
+}
+
+AbstractChessPiece *SimpleChessBoard::getPiece(QPoint coord) const {
     return pieces[coord.x()][coord.y()];
 }
 
-void ChessBoard::drawBoard(QGraphicsView *board) {
+void SimpleChessBoard::setPiece(QPoint coord, AbstractChessPiece *piece) {
+    pieces[coord.x()][coord.y()] = piece;
+}
+
+Camp SimpleChessBoard::getCurrCamp() const {
+    return curr_camp;
+}
+
+SimpleChessBoard::Winner SimpleChessBoard::getWinner() const {
+    return winner;
+}
+
+void SimpleChessBoard::setView(QGraphicsView *board) {
     // 画布棋盘属性设置
     board->setScene(this);
     board->setBackgroundBrush(Qt::white);
     board->setRenderHint(QPainter::Antialiasing, true); // 抗锯齿
     board->setSceneRect(QRectF(points[0][0], points[ROWS - 1][COLS - 1])); // 锁死视角
+}
 
+void SimpleChessBoard::drawBoard() {
     // 绘图
     addRect(QRectF(points[0][0], points[ROWS - 1][COLS - 1]));
     for (int i = 1; i < ROWS - 1; ++i) {
@@ -105,50 +128,115 @@ void ChessBoard::drawBoard(QGraphicsView *board) {
     han->setDefaultTextColor(Qt::black);
 }
 
-void ChessBoard::initPieces()  {
+void SimpleChessBoard::initPieces()  {
+    // 初始化状态变量
+    winner = Winner::none;
+    for (int i = 0; i < ROWS; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            if (pieces[i][j] != nullptr) {
+                this->removeItem(pieces[i][j]);
+                delete pieces[i][j];
+                pieces[i][j] = nullptr;
+            }
+        }
+    }
+    curr_camp = Camp::black;
+    setSelPie(nullptr);
+
+
     // 会自动设置 piece[][] 和 addItem(...)
-    General *tmp1 = new General(this, Camp::red, {0, 4});
-    General *tmp2 = new General(this, Camp::black, {ROWS - 1, 4});
+    General *tmp1 = new General(*this, Camp::red, {0, 4});
+    General *tmp2 = new General(*this, Camp::black, {ROWS - 1, 4});
     tmp1->setRival(tmp2);
     tmp2->setRival(tmp1);
-    new Guard(this, Camp::red, {0, 3});
-    new Guard(this, Camp::red, {0, COLS - 4});
-    new Guard(this, Camp::black, {ROWS - 1, 3});
-    new Guard(this, Camp::black, {ROWS - 1, COLS - 4});
-    new Elephant(this, Camp::red, {0, 2});
-    new Elephant(this, Camp::red, {0, COLS - 3});
-    new Elephant(this, Camp::black, {ROWS - 1, 2});
-    new Elephant(this, Camp::black, {ROWS - 1, COLS - 3});
-    new Horse(this, Camp::red, {0, 1});
-    new Horse(this, Camp::red, {0, COLS - 2});
-    new Horse(this, Camp::black, {ROWS - 1, 1});
-    new Horse(this, Camp::black, {ROWS - 1, COLS - 2});
-    new Chariot(this, Camp::red, {0, 0});
-    new Chariot(this, Camp::red, {0, COLS - 1});
-    new Chariot(this, Camp::black, {ROWS - 1, 0});
-    new Chariot(this, Camp::black, {ROWS - 1, COLS - 1});
-    new Cannon(this, Camp::red, {2, 1});
-    new Cannon(this, Camp::red, {2, COLS - 2});
-    new Cannon(this, Camp::black, {ROWS - 3, 1});
-    new Cannon(this, Camp::black, {ROWS - 3, COLS - 2});
-    new Solider(this, Camp::red, {3, 0});
-    new Solider(this, Camp::red, {3, 2});
-    new Solider(this, Camp::red, {3, 4});
-    new Solider(this, Camp::red, {3, 6});
-    new Solider(this, Camp::red, {3, 8});
-    new Solider(this, Camp::black, {ROWS - 4, 0});
-    new Solider(this, Camp::black, {ROWS - 4, 2});
-    new Solider(this, Camp::black, {ROWS - 4, 4});
-    new Solider(this, Camp::black, {ROWS - 4, 6});
-    new Solider(this, Camp::black, {ROWS - 4, 8});
+    new Guard(*this, Camp::red, {0, 3});
+    new Guard(*this, Camp::red, {0, COLS - 4});
+    new Guard(*this, Camp::black, {ROWS - 1, 3});
+    new Guard(*this, Camp::black, {ROWS - 1, COLS - 4});
+    new Elephant(*this, Camp::red, {0, 2});
+    new Elephant(*this, Camp::red, {0, COLS - 3});
+    new Elephant(*this, Camp::black, {ROWS - 1, 2});
+    new Elephant(*this, Camp::black, {ROWS - 1, COLS - 3});
+    new Horse(*this, Camp::red, {0, 1});
+    new Horse(*this, Camp::red, {0, COLS - 2});
+    new Horse(*this, Camp::black, {ROWS - 1, 1});
+    new Horse(*this, Camp::black, {ROWS - 1, COLS - 2});
+    new Chariot(*this, Camp::red, {0, 0});
+    new Chariot(*this, Camp::red, {0, COLS - 1});
+    new Chariot(*this, Camp::black, {ROWS - 1, 0});
+    new Chariot(*this, Camp::black, {ROWS - 1, COLS - 1});
+    new Cannon(*this, Camp::red, {2, 1});
+    new Cannon(*this, Camp::red, {2, COLS - 2});
+    new Cannon(*this, Camp::black, {ROWS - 3, 1});
+    new Cannon(*this, Camp::black, {ROWS - 3, COLS - 2});
+    new Solider(*this, Camp::red, {3, 0});
+    new Solider(*this, Camp::red, {3, 2});
+    new Solider(*this, Camp::red, {3, 4});
+    new Solider(*this, Camp::red, {3, 6});
+    new Solider(*this, Camp::red, {3, 8});
+    new Solider(*this, Camp::black, {ROWS - 4, 0});
+    new Solider(*this, Camp::black, {ROWS - 4, 2});
+    new Solider(*this, Camp::black, {ROWS - 4, 4});
+    new Solider(*this, Camp::black, {ROWS - 4, 6});
+    new Solider(*this, Camp::black, {ROWS - 4, 8});
 
     addOtherPiece();
 
     for (int i = 0; i < ROWS; ++i) {
         for (int j = 0; j < COLS; ++j) {
             if (pieces[i][j] == nullptr)
-                pieces[i][j] = new NoPiece(this, {i, j});
+                pieces[i][j] = new NoPiece(*this, {i, j});
         }
     }
 }
 
+
+ChessBoard::ChessBoard(QGraphicsView *board, QLabel *show_text,
+       QPushButton *reset) : SimpleChessBoard(board),
+        text_ui(show_text) {
+    connect(reset, &QPushButton::clicked, this, &ChessBoard::initPieces);
+    showText();
+}
+
+void ChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
+    SimpleChessBoard::handlePieceNotice(piece);
+    showText();
+}
+
+void ChessBoard::initPieces() {
+    SimpleChessBoard::initPieces();
+    showText();
+}
+
+void ChessBoard::showText() {
+    text_ui->setFont(QFont("fangsong", 20, Qt::yellow));
+    text_ui->setAlignment(Qt::AlignCenter);
+    if (getWinner() == Winner::none) {
+        if (getCurrCamp() == Camp::black)
+            text_ui->setText("轮到黑棋出棋");
+        else if (getCurrCamp() == Camp::red)
+            text_ui->setText("轮到红棋出棋");
+        else
+            text_ui->setText("错误");
+    } else {
+        if (getCurrCamp() == Camp::black)
+            text_ui->setText("黑棋胜利");
+        else if (getCurrCamp() == Camp::red)
+            text_ui->setText("红棋胜利");
+        else
+            text_ui->setText("错误");
+    }
+}
+
+NetChessBoard::NetChessBoard(QGraphicsView *board, QLabel *show_text,
+        QPushButton *reset) : ChessBoard(board, show_text, reset){
+    // QTcpServer *server = new QTcpServer();
+    // connect(server, &QTcpServer::newConnection, this, &Server::onNewConnection);
+    // server->listen(QHostAddress::Any, 12345);
+
+    // void Server::onNewConnection() {
+        // QTcpSocket *clientSocket = server->nextPendingConnection();
+        // connect(clientSocket, &QTcpSocket::readyRead, this, &Server::onDataReceived);
+// }
+
+}

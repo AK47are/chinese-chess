@@ -1,41 +1,87 @@
 #ifndef CHESSBOARD_H
 #define CHESSBOARD_H
 
-#include <QPaintEvent>
+#include "chesspieces.h"
 #include <QGraphicsView>
-class AbstractChessPiece;
-enum class Piece;
+#include <QLabel>
+#include <QPushButton>
 
-// 负责渲染棋盘以及棋子的移动
-class ChessBoard : public QGraphicsScene {
+class AbstractChessPiece;
+
+// 可以直接使用该类，也有胜利逻辑和阵营操作逻辑，但是不会有任何输出。
+class SimpleChessBoard : public QGraphicsScene {
 public:
     static const int COLS = 9;
     static const int ROWS = 10;
     // 格子的长度宽度大小。
     const double WIDTH;
     const double HEIGHT;
-    friend class AbstractChessPiece;
 
-    ChessBoard(QGraphicsView *board);
+    SimpleChessBoard(QGraphicsView *board);
 
-    void judgeSelectOrMove(AbstractChessPiece *piece);
+    // 工具函数
+    QPointF getPoint(QPoint coord) const;
+    AbstractChessPiece *getSelPie() const;
+    void setSelPie(AbstractChessPiece *piece);
+    AbstractChessPiece *getPiece(QPoint coord) const;
+    void setPiece(QPoint coord, AbstractChessPiece *piece);
+    Camp getCurrCamp() const;
+    enum class Winner {none, black, red};
+    Winner getWinner() const;
+
+protected:
+    virtual void setView(QGraphicsView *board);
+    virtual void drawBoard();
+    virtual void initPieces();
+
+    // 逻辑函数
+    friend void AbstractChessPiece::notifyChess();
+    virtual void handlePieceNotice(AbstractChessPiece *piece);
     void selectPiece(AbstractChessPiece *piece);
     void movePiece(AbstractChessPiece *target);
     void killPiece(AbstractChessPiece *target);
 
-    QPointF getPoint(QPoint coord);
-    AbstractChessPiece *&getPiece(QPoint coord);
-
     // 用来添加自定义的棋子。
     void addOtherPiece();
-private:
-    virtual void initPieces();
-    virtual void drawBoard(QGraphicsView *board);
 
+private:
+
+    // 图形坐标与逻辑坐标的映射
     QPointF points[ROWS][COLS];
-    // NOTE: 不初始化在 initPieces() 添加 NoPiece 对象时判断可能出错。
+
+    // NOTE: 不初始化为 nullptr ，在 initPieces() 添加 NoPiece 对象时判断会出错。
     AbstractChessPiece *pieces[ROWS][COLS] = {nullptr};
+
+    // 记录选择操作选择的 Item 对象。
     AbstractChessPiece *sel_piece = nullptr;
+
+    // 记录当前操作阵营，movePiece(...) 使用。
+    Camp curr_camp = Camp::black;
+
+    Winner winner = Winner::none;
+};
+
+// 主要补充与窗口中的其他组件的交互，需要更多外部参数。
+class ChessBoard : public SimpleChessBoard {
+public:
+    ChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
+    virtual void handlePieceNotice(AbstractChessPiece *piece) override;
+    virtual void initPieces() override;
+    void showText();
+
+private:
+      QLabel *text_ui;
+};
+
+// 主要补充有关网络类的使用。
+class NetChessBoard : public ChessBoard {
+public:
+    NetChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
+    // virtual void handlePieceNotice(AbstractChessPiece *piece) override;
+    // virtual void initPieces() override;
+
+private:
+
 };
 
 #endif // CHESSBOARD_H
