@@ -79,10 +79,6 @@ protected:
     virtual void movePiece(QPoint start, QPoint end) override;
     virtual void backMove();
 
-    // 工具
-    bool getIsBack() const;
-    auto getChange() { return change; };
-
     // 通知组件
     void updateAll();
     void updateText();

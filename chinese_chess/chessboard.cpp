@@ -224,20 +224,16 @@ void IntActChessBoard::movePiece(QPoint start, QPoint end) {
 
 // 简单粗暴
 void IntActChessBoard::backMove() {
-    qDebug() << "调用 backMove";
-    for (auto value : change) qDebug() << value[0] << " " << value[1];
     if (change.size() == 0) return;
     is_back = true;
     change.pop_back();
+    // 防止 NetChessBoard 重载后多次调用发送消息。
     IntActChessBoard::initPieces();
     for (int i = 0; i < change.size(); ++i) {
+        // 防止 NetChessBoard 重载后多次调用发送消息。
         IntActChessBoard::movePiece(change[i][0], change[i][1]);
     }
     is_back = false;
-}
-
-bool IntActChessBoard::getIsBack() const {
-    return is_back;
 }
 
 void IntActChessBoard::updateAll() {
@@ -345,11 +341,8 @@ void NetActChessBoard::handleData() {
     } else if (command == "execMove") {
         QPoint start, end;
         in >> start >> end;
-        qDebug() << "接收到" << start << " " << end;
         IntActChessBoard::movePiece(start, end);
     } else if (command == "backMove") {
-        qDebug() << "接收到" << command << "命令";
-        qDebug() << getChange().size();
         IntActChessBoard::backMove();
     } else {
         QMessageBox::information(nullptr, "警告", "命令错误，没有该命令");
