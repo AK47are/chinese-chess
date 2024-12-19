@@ -102,9 +102,9 @@ private:
 
 // 添加客户端与服务端的初始化连接和判定当前客户端是否允许操作。
 // 添加同步客户端会影响棋局的操作，使用 sendData(...) 和 handleData(...) 处理。
-class NetActChessBoard : public IntActChessBoard {
+class NetChessBoard : public IntActChessBoard {
 public:
-    NetActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset,
+    NetChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset,
                      QPushButton *back, Camp cp, QHostAddress ip, quint16 port);
 
 protected:
@@ -133,6 +133,28 @@ private:
     // 默认黑棋为服务器端。
     QTcpServer *black = nullptr;
     QTcpSocket *red = nullptr;
+};
+
+class RobotChessBoard : public IntActChessBoard {
+
+public:
+    RobotChessBoard(QGraphicsView *board, QLabel *show_text,
+                    QPushButton *reset, QPushButton *back);
+
+protected:
+    // 监控玩家的操作
+    void handlePieceNotice(AbstractChessPiece *piece) override;
+
+    // 机器人辅助函数
+    void robotMove();
+    QVector<std::array<QPoint, 2>> getAllLegalMoves();
+    QVector<QPoint> getPieceLegalPlace(AbstractChessPiece *piece);
+    int evaluateBoard();
+    std::array<QPoint, 2> calculateMove();
+
+private:
+    const Camp player_camp = Camp::black;
+    const Camp robot_camp = Camp::red;
 };
 
 #endif // CHESSBOARD_H

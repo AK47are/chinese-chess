@@ -23,6 +23,8 @@ public:
     virtual void drawText(QPainter *painter);
     virtual std::array<QString, 3> getName();
     virtual bool isAbleMove(QPoint pos) = 0;
+    // 用来给机器人评估得分
+    virtual int getScore() const { return 0; };
 
     // 工具函数
     virtual void notifyChess();
@@ -57,6 +59,7 @@ public:
     void setRival(AbstractChessPiece *rival_general) {rival_general_ = rival_general;};
     virtual std::array<QString, 3> getName() override { return {"将", "帅", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 10; };
 
 private:
     AbstractChessPiece *rival_general_;
@@ -67,6 +70,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"士", "仕", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 2; };
 };
 
 class Elephant : public AbstractChessPiece {
@@ -74,6 +78,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"象", "相", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 2; };
 };
 
 class Horse : public AbstractChessPiece {
@@ -81,6 +86,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"马", "马", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 3; };
 };
 
 class Chariot : public AbstractChessPiece {
@@ -88,6 +94,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"车", "车", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 5; };
 };
 
 class Cannon : public AbstractChessPiece {
@@ -95,6 +102,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"炮", "炮", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 4; };
 };
 
 class Solider : public AbstractChessPiece {
@@ -102,6 +110,7 @@ public:
     using AbstractChessPiece::AbstractChessPiece;
     virtual std::array<QString, 3> getName() override { return {"卒", "兵", "无"}; };
     virtual bool isAbleMove(QPoint pos) override;
+    virtual int getScore() const override { return 1; };
 };
 
 

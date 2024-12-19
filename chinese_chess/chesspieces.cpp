@@ -99,6 +99,9 @@ bool AbstractChessPiece::isAbleMove(QPoint pos) {
 
 bool General::isAbleMove(QPoint pos) {
     if (!AbstractChessPiece::isAbleMove(pos)) return false;
+    // 禁止吃子
+    if (this->getBoard().getPiece(pos)->getCamp() != Camp::none)
+        return false;
     // 区域判定
     if (getCamp() == Camp::red) {
         if (!(pos.x() >= 0 && pos.x() <= 2 && pos.y() >= 3 && pos.y() <= 5))

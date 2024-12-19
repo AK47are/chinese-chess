@@ -35,7 +35,8 @@ void SimpleChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
 void SimpleChessBoard::execSelect(AbstractChessPiece *piece) {
      // 选择逻辑
     if (piece == nullptr) return;
-    if (piece->getCamp() != curr_camp || piece->getCamp() == Camp::none) return;
+    if (winner != Winner::none || piece->getCamp() != curr_camp ||
+        piece->getCamp() == Camp::none) return;
     if (sel_piece == piece)
         setSelPie(nullptr);
     else
@@ -44,7 +45,8 @@ void SimpleChessBoard::execSelect(AbstractChessPiece *piece) {
 
 void SimpleChessBoard::execMove(QPoint start, QPoint end) {
     // 移动逻辑
-    if (getPiece(start) == nullptr || getPiece(end) == nullptr) return;
+    if (winner != Winner::none || getPiece(start) == nullptr ||
+        getPiece(end) == nullptr) return;
     if (getPiece(start)->isAbleMove(end) &&
             getPiece(start)->getCamp() == curr_camp) {
         movePiece(start, end);
@@ -53,8 +55,7 @@ void SimpleChessBoard::execMove(QPoint start, QPoint end) {
 }
 
 void SimpleChessBoard::execKill(AbstractChessPiece *target) {
-    if (target->getCamp() == Camp::none) return;
-    // HACK: 不优雅，不安全
+    if (winner != Winner::none || target->getCamp() == Camp::none) return;
     if (target->getName()[0] == "将") {
         winner = (target->getCamp() == Camp::black) ? Winner::red : Winner::black;
         // qDebug() << "出现赢家";
@@ -285,7 +286,7 @@ void IntActChessBoard::updateWinner() {
 }
 
 void IntActChessBoard::queryReview() {
-    if (is_review == true) return;
+    if (is_review == true || getWinner() != Winner::none) return;
     QMessageBox msg_box;
     msg_box.setWindowTitle("选择操作");
     msg_box.setText("是否要进行复盘：");
@@ -297,6 +298,8 @@ void IntActChessBoard::queryReview() {
 
 void IntActChessBoard::review() {
     is_review = true;
+    // 防止 change[now_index] 后面还有无关步数。
+    while (now_index < change.size() - 1) change.pop_back();
     QDialog dialog;
     QVBoxLayout layout(&dialog);
     QPushButton *forwardButton = new QPushButton("前进", &dialog);
@@ -313,26 +316,26 @@ void IntActChessBoard::review() {
     is_review = false;
 }
 
-NetActChessBoard::NetActChessBoard(QGraphicsView *board, QLabel *show_text,
+NetChessBoard::NetChessBoard(QGraphicsView *board, QLabel *show_text,
     QPushButton *reset, QPushButton *back, Camp cp, QHostAddress ip, quint16 port) :
     IntActChessBoard(board, show_text, reset, back), camp(cp) {
     if (camp == Camp::black) {
         black = new QTcpServer(this);
         black->listen(ip, port);
         connect(black, &QTcpServer::newConnection, this,
-                &NetActChessBoard::handleConnection);
+                &NetChessBoard::handleConnection);
         QMessageBox::information(nullptr, "提示", "房间创建成功");
     } else if (camp == Camp::red) {
         red = new QTcpSocket();
         red->connectToHost(ip, port);
-        connect(red, &QTcpSocket::readyRead, this, &NetActChessBoard::handleData);
+        connect(red, &QTcpSocket::readyRead, this, &NetChessBoard::handleData);
         QMessageBox::information(nullptr, "提示", "成功加入房间");
     } else {
         QMessageBox::information(nullptr, "警告", "阵营不存在");
     }
 }
 
-void NetActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
+void NetChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     if (red == nullptr) {
         QMessageBox::information(nullptr, "警告", "当前玩家人数不足");
     } else {
@@ -350,35 +353,35 @@ void NetActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     }
 }
 
-void NetActChessBoard::movePiece(QPoint start, QPoint end) {
+void NetChessBoard::movePiece(QPoint start, QPoint end) {
     sendData("execMove", start, end);
     IntActChessBoard::movePiece(start, end);
 }
 
-void NetActChessBoard::sendData(QString command) {
+void NetChessBoard::sendData(QString command) {
     QByteArray data;
     QDataStream out(&data, QIODevice::WriteOnly);
     out << command;
     red->write(data);
 }
 
-void NetActChessBoard::initPieces() {
+void NetChessBoard::initPieces() {
     sendData("initPieces");
     IntActChessBoard::initPieces();
 }
 
-bool NetActChessBoard::backMove() {
+bool NetChessBoard::backMove() {
     sendData("backMove");
     return IntActChessBoard::backMove();
 }
 
-bool NetActChessBoard::forwardMove() {
+bool NetChessBoard::forwardMove() {
     sendData("forwardMove");
     return IntActChessBoard::forwardMove();
 }
 
 template <typename... Args>
-void NetActChessBoard::sendData(QString command, Args... args) {
+void NetChessBoard::sendData(QString command, Args... args) {
     QByteArray data;
     QDataStream out(&data, QIODevice::WriteOnly);
     // 使用展开表达式将每个参数写入流
@@ -387,7 +390,7 @@ void NetActChessBoard::sendData(QString command, Args... args) {
     red->write(data);
 }
 
-void NetActChessBoard::handleData() {
+void NetChessBoard::handleData() {
     QByteArray data = red->readAll();
     QDataStream in(&data, QIODevice::ReadOnly);
     QString command;
@@ -411,20 +414,97 @@ void NetActChessBoard::handleData() {
 }
 
 // 只能给 black 绑定这个槽函数。
-void NetActChessBoard::handleConnection() {
+void NetChessBoard::handleConnection() {
     if (red == nullptr) {
         red = black->nextPendingConnection();
         QMessageBox::information(nullptr, "提示", "有玩家进入房间");
-        connect(red, &QTcpSocket::readyRead, this, &NetActChessBoard::handleData);
-        connect(red, &QTcpSocket::disconnected, this, &NetActChessBoard::handleDisconnected);
+        connect(red, &QTcpSocket::readyRead, this, &NetChessBoard::handleData);
+        connect(red, &QTcpSocket::disconnected, this, &NetChessBoard::handleDisconnected);
     } else {
         QMessageBox::information(nullptr, "警告", "已经有玩家进入房间");
     }
 }
 
-void NetActChessBoard::handleDisconnected() {
+void NetChessBoard::handleDisconnected() {
     delete red;
     red = nullptr;
     QMessageBox::information(nullptr, "警告", "有玩家断开连接");
     IntActChessBoard::initPieces();
+}
+
+RobotChessBoard::RobotChessBoard(QGraphicsView *board, QLabel *show_text,
+                QPushButton *reset, QPushButton *back) :
+                IntActChessBoard(board, show_text, reset, back) {
+}
+
+void RobotChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
+    if (getCurrCamp() == player_camp) {
+        IntActChessBoard::handlePieceNotice(piece);
+        robotMove();
+    }
+}
+
+void RobotChessBoard::robotMove() {
+    if (getCurrCamp() != robot_camp || getWinner() != Winner::none) return;
+    // 得到机器人可以移动的全部合法路径。
+    QVector<std::array<QPoint, 2>> legal_moves = getAllLegalMoves();
+    std::array<QPoint, 2> best_move = {QPoint{-1, -1}, QPoint{-1, -1}};
+    // 得到当前棋盘分数。
+    int best_score = this->evaluateBoard();
+
+    for (const auto& move : legal_moves) {
+        int score = best_score;
+        // 机器人移动只有两种结果：无变化 / 对方被吃子
+        if (getPiece(move[1])->getCamp() == player_camp)
+            score += getPiece(move[1])->getScore();
+        if (score > best_score) {
+            best_score = score;
+            best_move = move;
+        }
+    }
+    qDebug() << best_move[0] << " " << best_move[1];
+    if (best_move[0] == QPoint{-1, -1}) {
+        best_move = legal_moves[rand() % legal_moves.size()];
+    }
+    movePiece(best_move[0], best_move[1]);
+}
+
+QVector<std::array<QPoint, 2>> RobotChessBoard::getAllLegalMoves() {
+    QVector<std::array<QPoint, 2>> legal_moves;
+    for (int i = 0; i < ROWS; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            auto piece = getPiece(QPoint(i, j));
+            if (piece->getCamp() == robot_camp) {
+                for (const auto& move : getPieceLegalPlace(piece)) {
+                    legal_moves.push_back({QPoint(i, j), move});
+                }
+            }
+        }
+    }
+    return legal_moves;
+}
+
+QVector<QPoint> RobotChessBoard::getPieceLegalPlace(AbstractChessPiece *piece) {
+    QVector<QPoint> place;
+    for (int i = 0; i < ROWS; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            if (piece->isAbleMove({i, j})) place.append({i, j});
+        }
+    }
+    return place;
+}
+
+int RobotChessBoard::evaluateBoard() {
+    int total = 0;
+    for (int i = 0; i < ROWS; ++i) {
+        for (int j = 0; j < COLS; ++j) {
+            auto piece = getPiece(QPoint(i, j));
+            if (piece->getCamp() == robot_camp) {
+                total += piece->getScore();
+            } else if (piece->getCamp() == player_camp) {
+                total -= piece->getScore();
+            }
+        }
+    }
+    return total;
 }
