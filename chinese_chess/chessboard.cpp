@@ -25,7 +25,7 @@ SimpleChessBoard::SimpleChessBoard(QGraphicsView *board) : WIDTH(board->width() 
 void SimpleChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     if (piece == nullptr || winner != Winner::none) return;
     if (sel_piece != nullptr && sel_piece != piece) {
-        execMove(piece);
+        execMove(sel_piece->getCoord(), piece->getCoord());
     } else {
         execSelect(piece);
     }
@@ -41,14 +41,12 @@ void SimpleChessBoard::execSelect(AbstractChessPiece *piece) {
         setSelPie(piece);
 }
 
-void SimpleChessBoard::execMove(AbstractChessPiece *target) {
+void SimpleChessBoard::execMove(QPoint start, QPoint end) {
     // 移动逻辑
-    if (sel_piece == nullptr || target == nullptr) return;
-    if (sel_piece->isAbleMove(target->getCoord()) &&
-            sel_piece->getCamp() == curr_camp) {
-        curr_camp = (curr_camp == Camp::black) ? Camp::red : Camp::black;
-        movePiece(sel_piece->getCoord(), target->getCoord());
-        execKill(target);
+    if (getPiece(start) == nullptr || getPiece(end) == nullptr) return;
+    if (getPiece(start)->isAbleMove(end) &&
+            getPiece(start)->getCamp() == curr_camp) {
+        movePiece(start, end);
     }
     setSelPie(nullptr);
 }
@@ -62,16 +60,19 @@ void SimpleChessBoard::execKill(AbstractChessPiece *target) {
     }
     QPoint coord = target->getCoord();
     this->removeItem(target);
-    // FIX: 莫名出现 QGraphicsItem::ungrabMouse: not a mouse grabber 警告。
+    // FIXED: 莫名出现 QGraphicsItem::ungrabMouse: not a mouse grabber 警告。
+    // 删掉棋子鼠标事件中的 QGraphicsItem::mousePressEvent(event); 就恢复了。
     delete target;
     new NoPiece(*this, coord);
 }
 
 void SimpleChessBoard::movePiece(QPoint start, QPoint end) {
+    curr_camp = (curr_camp == Camp::black) ? Camp::red : Camp::black;
     auto start_piece = getPiece(start);
     auto end_piece = getPiece(end);
     start_piece->setCoord(end);
     end_piece->setCoord(start);
+    execKill(end_piece);
 }
 
 
@@ -201,22 +202,42 @@ void SimpleChessBoard::initPieces()  {
 
 
 IntActChessBoard::IntActChessBoard(QGraphicsView *board, QLabel *show_text,
-       QPushButton *reset) : SimpleChessBoard(board),
+       QPushButton *reset, QPushButton *back) : SimpleChessBoard(board),
         text_ui(show_text) {
     connect(reset, &QPushButton::clicked, this, &IntActChessBoard::initPieces);
+    connect(back, &QPushButton::clicked, this, &IntActChessBoard::backMove);
     // 在构造函数中无法使用多态性。
-    updateText();
-    updateWinner();
-}
-
-void IntActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
-    SimpleChessBoard::handlePieceNotice(piece);
     updateAll();
 }
 
 void IntActChessBoard::initPieces() {
     SimpleChessBoard::initPieces();
+    if (is_back == false) change.clear();
     updateAll();
+}
+
+void IntActChessBoard::movePiece(QPoint start, QPoint end) {
+    SimpleChessBoard::movePiece(start, end);
+    if (is_back == false) change.append({start, end});
+    updateAll();
+}
+
+// 简单粗暴
+void IntActChessBoard::backMove() {
+    qDebug() << "调用 backMove";
+    for (auto value : change) qDebug() << value[0] << " " << value[1];
+    if (change.size() == 0) return;
+    is_back = true;
+    change.pop_back();
+    IntActChessBoard::initPieces();
+    for (int i = 0; i < change.size(); ++i) {
+        IntActChessBoard::movePiece(change[i][0], change[i][1]);
+    }
+    is_back = false;
+}
+
+bool IntActChessBoard::getIsBack() const {
+    return is_back;
 }
 
 void IntActChessBoard::updateAll() {
@@ -244,8 +265,8 @@ void IntActChessBoard::updateWinner() {
 }
 
 NetActChessBoard::NetActChessBoard(QGraphicsView *board, QLabel *show_text,
-    QPushButton *reset, Camp cp, QHostAddress ip, quint16 port) :
-    IntActChessBoard(board, show_text, reset), camp(cp) {
+    QPushButton *reset, QPushButton *back, Camp cp, QHostAddress ip, quint16 port) :
+    IntActChessBoard(board, show_text, reset, back), camp(cp) {
     if (camp == Camp::black) {
         black = new QTcpServer(this);
         black->listen(ip, port);
@@ -267,21 +288,22 @@ void NetActChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
         QMessageBox::information(nullptr, "警告", "当前玩家人数不足");
     } else {
         if (camp == getCurrCamp()) {
-            SimpleChessBoard::handlePieceNotice(piece);
+            IntActChessBoard::handlePieceNotice(piece);
         } else {
-            QMessageBox::information(nullptr, "警告", "当前不是自己回合");
+            if (camp == Camp::black) {
+                QMessageBox::information(nullptr, "警告", "当前是红棋回合");
+            } else if (camp == Camp::red) {
+                QMessageBox::information(nullptr, "警告", "当前是黑棋回合");
+            } else {
+                QMessageBox::information(nullptr, "警告", "阵营错误");
+            }
         }
     }
 }
 
-void NetActChessBoard::initPieces() {
-    IntActChessBoard::initPieces();
-    sendData("initPieces");
-}
-
 void NetActChessBoard::movePiece(QPoint start, QPoint end) {
     IntActChessBoard::movePiece(start, end);
-    sendData("movePiece", start, end);
+    sendData("execMove", start, end);
 }
 
 void NetActChessBoard::sendData(QString command) {
@@ -289,6 +311,16 @@ void NetActChessBoard::sendData(QString command) {
     QDataStream out(&data, QIODevice::WriteOnly);
     out << command;
     red->write(data);
+}
+
+void NetActChessBoard::initPieces() {
+    IntActChessBoard::initPieces();
+    sendData("initPieces");
+}
+
+void NetActChessBoard::backMove() {
+    IntActChessBoard::backMove();
+    sendData("backMove");
 }
 
 template <typename... Args>
@@ -307,16 +339,21 @@ void NetActChessBoard::handleData() {
     QString command;
     in >> command;
 
+    // 注意不能使用本类的对应方法，不然会重复发送消息。
     if (command == "initPieces") {
         IntActChessBoard::initPieces();
-    } else if (command == "movePiece") {
+    } else if (command == "execMove") {
         QPoint start, end;
         in >> start >> end;
-        movePiece(start, end);
+        qDebug() << "接收到" << start << " " << end;
+        IntActChessBoard::movePiece(start, end);
+    } else if (command == "backMove") {
+        qDebug() << "接收到" << command << "命令";
+        qDebug() << getChange().size();
+        IntActChessBoard::backMove();
     } else {
         QMessageBox::information(nullptr, "警告", "命令错误，没有该命令");
     }
-    updateAll();
 }
 
 // 只能给 black 绑定这个槽函数。

@@ -29,7 +29,6 @@ void AbstractChessPiece::paint(QPainter *painter,
 
 void AbstractChessPiece::mousePressEvent(QGraphicsSceneMouseEvent *event) {
     this->notifyChess();
-    QGraphicsItem::mousePressEvent(event); // 必须添加
 }
 
 void AbstractChessPiece::drawText(QPainter *painter) {

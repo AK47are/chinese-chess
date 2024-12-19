@@ -29,6 +29,7 @@ public:
 
 protected:
     // 额外提供给派生棋盘类的接口。
+    // 设置 virtual 的主要原因是让派生类可以监控特定函数的触发。
     virtual void setView(QGraphicsView *board);
     virtual void drawBoard();
     virtual void initPieces();
@@ -43,12 +44,12 @@ protected:
     virtual void handlePieceNotice(AbstractChessPiece *piece);
     virtual void movePiece(QPoint start, QPoint end);
 
-
-private:
     // 选择、移动、击杀逻辑
     void execSelect(AbstractChessPiece *piece);
-    void execMove(AbstractChessPiece *target);
+    void execMove(QPoint start, QPoint end);
     void execKill(AbstractChessPiece *target);
+
+private:
     // 用来添加自定义的棋子。
     void addOtherPiece();
 
@@ -65,39 +66,52 @@ private:
     Winner winner = Winner::none;
 };
 
-// 主要补充与窗口中的其他组件的交互，需要更多外部参数。
+// 主要补充与窗口中的其他组件的交互。
+// 例如实现文本显示，实现重置，悔棋，复盘功能等。
 class IntActChessBoard : public SimpleChessBoard {
 public:
-    IntActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset);
+    IntActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset,
+                     QPushButton *back);
 
 protected:
-    // 额外通知组件
-    virtual void handlePieceNotice(AbstractChessPiece *piece) override;
-    virtual void initPieces() override;
+    // 监控函数，通知组件，记录移动。
+    void initPieces() override;
+    virtual void movePiece(QPoint start, QPoint end) override;
+    virtual void backMove();
+
+    // 工具
+    bool getIsBack() const;
+    auto getChange() { return change; };
 
     // 通知组件
-    virtual void updateAll();
+    void updateAll();
     void updateText();
     void updateWinner();
 
 private:
     QLabel *text_ui;
+
+    // 上一个动作是否为悔棋操作。
+    bool is_back = false;
+    QVector<std::array<QPoint, 2>> change;
 };
 
-// 主要在支持组件交互的基础上补充有关网络功能。
-// 菱形继承和 Qt 的 connect(...) 冲突。
+
+// 添加客户端与服务端的初始化连接和判定当前客户端是否允许操作。
+// 添加同步客户端会影响棋局的操作，使用 sendData(...) 和 handleData(...) 处理。
 class NetActChessBoard : public IntActChessBoard {
 public:
     NetActChessBoard(QGraphicsView *board, QLabel *show_text, QPushButton *reset,
-                     Camp cp, QHostAddress ip, quint16 port);
+                     QPushButton *back, Camp cp, QHostAddress ip, quint16 port);
 
 protected:
     // 添加当前客户端阵营判定、人数判定
-    virtual void handlePieceNotice(AbstractChessPiece *piece) override;
+    void handlePieceNotice(AbstractChessPiece *piece) override;
 
     // 当前客户端进行操作后通知另一个客户端
-    virtual void initPieces() override;
-    virtual void movePiece(QPoint start, QPoint end) override;
+    void movePiece(QPoint start, QPoint end) override;
+    void initPieces() override;
+    void backMove() override;
 
 template <typename... Args>
     void sendData(QString command, Args... args);
