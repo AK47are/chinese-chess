@@ -76,19 +76,26 @@ public:
 protected:
     // 监控函数，通知组件，记录移动。
     void initPieces() override;
-    virtual void movePiece(QPoint start, QPoint end) override;
-    virtual void backMove();
+    void movePiece(QPoint start, QPoint end) override;
+    virtual bool backMove();
+    virtual bool forwardMove();
 
     // 通知组件
     void updateAll();
     void updateText();
     void updateWinner();
 
+    void queryReview();
+    // 进入复盘模式
+    void review();
+
 private:
     QLabel *text_ui;
 
-    // 上一个动作是否为悔棋操作。
+    // 是否处于悔棋或复盘状态。
     bool is_back = false;
+    bool is_review = false;
+    int now_index = -1; // change[now_index]
     QVector<std::array<QPoint, 2>> change;
 };
 
@@ -107,7 +114,8 @@ protected:
     // 当前客户端进行操作后通知另一个客户端
     void movePiece(QPoint start, QPoint end) override;
     void initPieces() override;
-    void backMove() override;
+    bool backMove() override;
+    bool forwardMove() override;
 
 template <typename... Args>
     void sendData(QString command, Args... args);

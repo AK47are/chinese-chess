@@ -40,7 +40,7 @@ void Widget::initChessBoard() {
         msg_box.addButton(QMessageBox::Close);
         msg_box.exec();
         if (msg_box.clickedButton() == create) {
-            // 注意有些网络端口可能已经被占用，导致找不到。vpn 使用代理服务器也会影响。
+            // 注意 使用 vpn 会找不到，可能是代理服务器的问题。
             new NetActChessBoard(ui->chessboard, ui->chess_text, ui->reset, ui->back,
                                  Camp::black, QHostAddress::Any, 11111);
         } else if (msg_box.clickedButton() == join){
