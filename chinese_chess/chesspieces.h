@@ -39,6 +39,7 @@ private:
     QPoint coord_ ; // 逻辑坐标
 };
 
+// 空棋子：填充没有棋子的格子，用来检测鼠标事件。
 class NoPiece : public AbstractChessPiece {
 
 public:
@@ -62,9 +63,11 @@ public:
     virtual int getScore() const override { return 10; };
 
 private:
+    // 用来进行它的特殊判定：王不见王。
     AbstractChessPiece *rival_general_;
 };
 
+// 后面都是简单的重载 getName(), isAbleMove(...), getScore();
 class Guard : public AbstractChessPiece {
 public:
     using AbstractChessPiece::AbstractChessPiece;

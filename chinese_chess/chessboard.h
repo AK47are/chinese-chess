@@ -36,7 +36,7 @@ protected:
 
     void setSelPie(AbstractChessPiece *piece);
 
-    // friend 函数需要额外调用下一行函数。
+    // friend 函数代表该函数需要额外调用下一行函数。
     friend void AbstractChessPiece::setCoord(QPoint coord);
     void setPiece(QPoint coord, AbstractChessPiece *piece);
 
