@@ -405,7 +405,6 @@ void NetChessBoard::handleData() {
         IntActChessBoard::movePiece(start, end);
     } else if (command == "backMove") {
         IntActChessBoard::backMove();
-        // NOTE: 赢家会可以优先选择复盘。
     } else if (command == "forwardMove"){
         IntActChessBoard::forwardMove();
     } else {
