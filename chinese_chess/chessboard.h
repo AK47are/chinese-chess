@@ -9,7 +9,7 @@
 
 class AbstractChessPiece;
 
-// 可以直接 new 该类，也有胜利逻辑和阵营操作逻辑，但是不会有任何输出。
+// 可以直接 new 该类，也有胜利逻辑和阵营操作逻辑，但是不会有任何输出提示。
 class SimpleChessBoard : public QGraphicsScene {
 public:
     enum class Winner {none, black, red};
@@ -34,12 +34,6 @@ protected:
     virtual void drawBoard();
     virtual void initPieces();
 
-    void setSelPie(AbstractChessPiece *piece);
-
-    // friend 函数代表该函数需要额外调用下一行函数。
-    friend void AbstractChessPiece::setCoord(QPoint coord);
-    void setPiece(QPoint coord, AbstractChessPiece *piece);
-
     friend void AbstractChessPiece::notifyChess();
     virtual void handlePieceNotice(AbstractChessPiece *piece);
     virtual void movePiece(QPoint start, QPoint end);
@@ -50,8 +44,14 @@ protected:
     void execKill(AbstractChessPiece *target);
 
 private:
+    // 会自动更新棋盘渲染
+    void setSelPie(AbstractChessPiece *piece);
     // 用来添加自定义的棋子。
     void addOtherPiece();
+    // friend 函数代表该函数需要额外调用下一行函数。
+    friend void AbstractChessPiece::setCoord(QPoint coord);
+    void setPiece(QPoint coord, AbstractChessPiece *piece);
+
 
     // 图形坐标与逻辑坐标的映射
     QPointF points[ROWS][COLS];
@@ -77,8 +77,11 @@ protected:
     // 监控函数，通知组件，记录移动。
     void initPieces() override;
     void movePiece(QPoint start, QPoint end) override;
-    virtual bool backMove();
-    virtual bool forwardMove();
+    virtual void backPiece(); // 悔棋操作
+
+    // 复盘使用
+    bool backMove();
+    bool forwardMove();
 
     // 通知组件
     void updateAll();
@@ -92,11 +95,10 @@ protected:
 private:
     QLabel *text_ui;
 
-    // 是否处于悔棋或复盘状态。
-    bool is_back = false;
-    bool is_review = false;
-    int now_index = -1; // change[now_index]
-    QVector<std::array<QPoint, 2>> change;
+    // 复盘使用
+    bool is_review = false; // 是否是复盘状态。
+    int now_index;
+    QVector<std::array<QPoint, 2>> change;     // 记录移动
 };
 
 
@@ -114,8 +116,7 @@ protected:
     // 当前客户端进行操作后通知另一个客户端
     void movePiece(QPoint start, QPoint end) override;
     void initPieces() override;
-    bool backMove() override;
-    bool forwardMove() override;
+    void backPiece() override;
 
 template <typename... Args>
     void sendData(QString command, Args... args);

@@ -32,6 +32,17 @@ void SimpleChessBoard::handlePieceNotice(AbstractChessPiece *piece) {
     }
 }
 
+void SimpleChessBoard::execMove(QPoint start, QPoint end) {
+    // 移动逻辑
+    if (winner != Winner::none || getPiece(start) == nullptr ||
+        getPiece(end) == nullptr) return;
+    if (getPiece(start)->isAbleMove(end) &&
+        getPiece(start)->getCamp() == curr_camp) {
+        movePiece(start, end);
+    }
+    setSelPie(nullptr);
+}
+
 void SimpleChessBoard::execSelect(AbstractChessPiece *piece) {
      // 选择逻辑
     if (piece == nullptr) return;
@@ -41,17 +52,6 @@ void SimpleChessBoard::execSelect(AbstractChessPiece *piece) {
         setSelPie(nullptr);
     else
         setSelPie(piece);
-}
-
-void SimpleChessBoard::execMove(QPoint start, QPoint end) {
-    // 移动逻辑
-    if (winner != Winner::none || getPiece(start) == nullptr ||
-        getPiece(end) == nullptr) return;
-    if (getPiece(start)->isAbleMove(end) &&
-            getPiece(start)->getCamp() == curr_camp) {
-        movePiece(start, end);
-    }
-    setSelPie(nullptr);
 }
 
 void SimpleChessBoard::execKill(AbstractChessPiece *target) {
@@ -207,53 +207,59 @@ IntActChessBoard::IntActChessBoard(QGraphicsView *board, QLabel *show_text,
        QPushButton *reset, QPushButton *back) : SimpleChessBoard(board),
         text_ui(show_text) {
     connect(reset, &QPushButton::clicked, this, &IntActChessBoard::initPieces);
-    connect(back, &QPushButton::clicked, this, &IntActChessBoard::backMove);
+    connect(back, &QPushButton::clicked, this, &IntActChessBoard::backPiece);
     // 在构造函数中无法使用多态性。
     updateAll();
 }
 
 void IntActChessBoard::initPieces() {
     SimpleChessBoard::initPieces();
-    if (is_back == false) {
-        now_index = -1;
-        change.clear();
-    }
+    change.clear();
     updateAll();
 }
 
 void IntActChessBoard::movePiece(QPoint start, QPoint end) {
+    // 本函数应该只允许用户触发。例如悔棋、复盘使用 movePiece(...) 不能触发。
     SimpleChessBoard::movePiece(start, end);
-    if (is_back == false && is_review == false) {
-        ++now_index;
-        if (now_index == change.size()) {
-            change.append({start, end});
-        } else {
-            change[now_index] = {start, end};
-        }
-    }
+    change.append({start, end});
     updateAll();
 }
 
 // 简单粗暴
-bool IntActChessBoard::backMove() {
-    if (change.size() == 0) return false;
-    if (now_index < 0 || now_index > change.size()) return false;
-    // 防止 NetChessBoard 重载后多次调用发送消息。
-    is_back = true;
-    --now_index;
-    IntActChessBoard::initPieces();
-    for (int i = 0; i <= now_index; ++i) {
+void IntActChessBoard::backPiece() {
+    if (change.size() <= 0) return;
+    change.pop_back();
+    // 不能调用本身重载的 initPieces() 因为会导致 change 被清空。
+    // 同时防止 NetChessBoard 重载后多次调用发送消息。
+    SimpleChessBoard::initPieces();
+    for (int i = 0; i < change.size(); ++i) {
         // 防止 NetChessBoard 重载后多次调用发送消息。
-        IntActChessBoard::movePiece(change[i][0], change[i][1]);
+        // 重载的 movePiece(...) 通过 is_back 来判断当前状态。
+        SimpleChessBoard::movePiece(change[i][0], change[i][1]);
     }
-    is_back = false;
+    updateAll();
+}
+
+
+bool IntActChessBoard::backMove() {
+    if (now_index < 0 || now_index > change.size()) return false;
+    --now_index;
+    // 不能调用本身重载的 initPieces() 因为会导致 change 被清空。
+    SimpleChessBoard::initPieces();
+    for (int i = 0; i <= now_index; ++i) {
+        // 重载的 movePiece(...) 通过 is_back 来判断当前状态。
+        SimpleChessBoard::movePiece(change[i][0], change[i][1]);
+    }
+    updateAll();
     return true;
 }
 
 bool IntActChessBoard::forwardMove() {
     if (now_index >= change.size() - 1) return false;
     ++now_index;
-    IntActChessBoard::movePiece(change[now_index][0], change[now_index][1]);
+    // 原因同上。
+    SimpleChessBoard::movePiece(change[now_index][0], change[now_index][1]);
+    updateAll();
     return true;
 }
 
@@ -286,7 +292,7 @@ void IntActChessBoard::updateWinner() {
 }
 
 void IntActChessBoard::queryReview() {
-    if (is_review == true || getWinner() != Winner::none) return;
+    if (is_review == true || getWinner() == Winner::none) return;
     QMessageBox msg_box;
     msg_box.setWindowTitle("选择操作");
     msg_box.setText("是否要进行复盘：");
@@ -299,7 +305,7 @@ void IntActChessBoard::queryReview() {
 void IntActChessBoard::review() {
     is_review = true;
     // 防止 change[now_index] 后面还有无关步数。
-    while (now_index < change.size() - 1) change.pop_back();
+    now_index = change.size() - 1;
     QDialog dialog;
     QVBoxLayout layout(&dialog);
     QPushButton *forwardButton = new QPushButton("前进", &dialog);
@@ -370,15 +376,11 @@ void NetChessBoard::initPieces() {
     IntActChessBoard::initPieces();
 }
 
-bool NetChessBoard::backMove() {
-    sendData("backMove");
-    return IntActChessBoard::backMove();
+void NetChessBoard::backPiece() {
+    sendData("backPiece");
+    IntActChessBoard::backPiece();
 }
 
-bool NetChessBoard::forwardMove() {
-    sendData("forwardMove");
-    return IntActChessBoard::forwardMove();
-}
 
 template <typename... Args>
 void NetChessBoard::sendData(QString command, Args... args) {
@@ -403,11 +405,8 @@ void NetChessBoard::handleData() {
         QPoint start, end;
         in >> start >> end;
         IntActChessBoard::movePiece(start, end);
-    } else if (command == "backMove") {
-        IntActChessBoard::backMove();
-        // NOTE: 赢家会可以优先选择复盘。
-    } else if (command == "forwardMove"){
-        IntActChessBoard::forwardMove();
+    } else if (command == "backPiece") {
+        IntActChessBoard::backPiece();
     } else {
         QMessageBox::information(nullptr, "警告", "命令错误，没有该命令");
     }
