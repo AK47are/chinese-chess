@@ -461,7 +461,6 @@ void RobotChessBoard::robotMove() {
             best_move = move;
         }
     }
-    qDebug() << best_move[0] << " " << best_move[1];
     if (best_move[0] == QPoint{-1, -1}) {
         best_move = legal_moves[rand() % legal_moves.size()];
     }
