@@ -1,23 +1,23 @@
-#include "widget.h"
+#include "mainwindow.h"
 #include "chessboard.h"
-#include "./ui_widget.h"
+#include "./ui_mainwindow.h"
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QPushButton>
 
-Widget::Widget(QWidget *parent)
+MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::Widget) {
     ui->setupUi(this);
     initChessBoard();
 }
 
-Widget::~Widget() {
+MainWindow::~MainWindow() {
     delete ui;
 }
 
 // 在图形化界面让用户选择。当然你直接初始化也行，不过也要指定的参数。
-void Widget::initChessBoard() {
+void MainWindow::initChessBoard() {
     this->setWindowTitle("中国象棋");
 
     QMessageBox msg_box(this);

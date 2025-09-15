@@ -1,5 +1,5 @@
-#ifndef WIDGET_H
-#define WIDGET_H
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
 
 #include <QWidget>
 
@@ -9,15 +9,15 @@ class Widget;
 }
 QT_END_NAMESPACE
 
-class Widget : public QWidget {
+class MainWindow : public QWidget {
     Q_OBJECT
 
 public:
-    Widget(QWidget *parent = nullptr);
+    MainWindow(QWidget *parent = nullptr);
     void initChessBoard();
-    ~Widget();
+    ~MainWindow();
 
 private:
     Ui::Widget *ui;
 };
-#endif // WIDGET_H
+#endif // MAINWINDOW_H

@@ -14,9 +14,9 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
 set(PROJECT_SOURCES
         main.cpp
-        widget.cpp
-        widget.h
-        widget.ui
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
 	chesspieces.h
 	chesspieces.cpp
         chessboard.h
