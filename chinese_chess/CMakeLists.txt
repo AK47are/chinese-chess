@@ -17,16 +17,17 @@ set(PROJECT_SOURCES
         widget.cpp
         widget.h
         widget.ui
+	chesspieces.h
+	chesspieces.cpp
+        chessboard.h
+	chessboard.cpp
+        otherpieces.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(chinese_chess
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        chesspieces.h chesspieces.cpp
-        chessboard.h chessboard.cpp
-        otherpieces.cpp
-
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET chinese_chess APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
