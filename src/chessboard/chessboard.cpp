@@ -1,5 +1,5 @@
 #include "chessboard.h"
-#include "chesspieces.h"
+#include "../chesspieces/chesspieces.h"
 #include <QGraphicsScene>
 #include <QTcpSocket>
 #include <QGraphicsTextItem>

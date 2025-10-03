@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "chessboard.h"
+#include "../chessboard/chessboard.h"
 #include "./ui_mainwindow.h"
 #include <QInputDialog>
 #include <QMessageBox>

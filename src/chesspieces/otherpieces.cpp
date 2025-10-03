@@ -1,4 +1,4 @@
-#include "chessboard.h"
+#include "../chessboard/chessboard.h"
 #include "chesspieces.h"
 
 

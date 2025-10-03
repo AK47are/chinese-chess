@@ -13,15 +13,15 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
 set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-	chesspieces.h
-	chesspieces.cpp
-        chessboard.h
-	chessboard.cpp
-        otherpieces.cpp
+    ./src/chessboard/chessboard.h
+    ./src/chessboard/chessboard.cpp
+    ./src/chesspieces/chesspieces.h
+    ./src/chesspieces/chesspieces.cpp
+    ./src/chesspieces/otherpieces.cpp
+    ./src/mainwindow/mainwindow.cpp
+    ./src/mainwindow/mainwindow.h
+    ./src/mainwindow/mainwindow.ui
+    ./src/main.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

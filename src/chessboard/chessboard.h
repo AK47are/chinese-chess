@@ -1,7 +1,7 @@
 #ifndef CHESSBOARD_H
 #define CHESSBOARD_H
 
-#include "chesspieces.h"
+#include "../chesspieces/chesspieces.h"
 #include <QGraphicsView>
 #include <QLabel>
 #include <QPushButton>

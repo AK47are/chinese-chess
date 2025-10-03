@@ -1,5 +1,5 @@
 #include "chesspieces.h"
-#include "chessboard.h"
+#include "../chessboard/chessboard.h"
 
 AbstractChessPiece::AbstractChessPiece(SimpleChessBoard &chess, Camp camp_id,
     QPoint coord) : chess_(chess), camp_(camp_id) {
