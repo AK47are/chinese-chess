@@ -37,20 +37,22 @@ switch ($Target) {
         if (Test-Path "$DebugDir/chinese_chess.exe") {
             & "$DebugDir/chinese_chess.exe"
         } else {
-            Write-Host "Debug version not built, please run: .\command.ps1 debug"
+            Write-Host "Debug version not built, please run: .\build.ps1 debug"
         }
     }
     "run-release" {
         if (Test-Path "$ReleaseDir/chinese_chess.exe") {
             & "$ReleaseDir/chinese_chess.exe"
         } else {
-            Write-Host "Release version not built, please run: .\command.ps1 release"
+            Write-Host "Release version not built, please run: .\build.ps1 release"
         }
     }
     "run" {
         if (Test-Path "$DebugDir/chinese_chess.exe") {
             & "$DebugDir/chinese_chess.exe"
         } else {
-            Write-Host "Debug version not built, please run: .\command.ps1 debug"
+            Write-Host "Debug version not built, please run: .\build.ps1 debug"
         }
     }
+}
+
